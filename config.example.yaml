@@ -1,0 +1,73 @@
+# WINK Store Helper Configuration
+# Copy this to config.yaml and fill in your values
+
+api_base: "https://api.winkai.in"
+api_key: "wink_edge_YOUR_API_KEY_HERE"  # Get from backend: POST /api/admin/edge-keys
+org_id: "org_uuid_here"
+store_id: "store_demo_001"
+
+cameras:
+  # Entrance camera - tracks footfall
+  - camera_id: "cam_entrance_01"
+    rtsp: "rtsp://username:password@192.168.1.10:554/stream1"
+    capabilities: ["entrance"]
+    screenshot_size: [2872, 1570]  # Reference screenshot dimensions
+    entrance_line:
+      - [1769, 737]  # Line start point [x, y]
+      - [2173, 945]  # Line end point [x, y]
+
+  # Zone + Shelf camera
+  - camera_id: "cam_zone_shelf_01"
+    rtsp: "rtsp://username:password@192.168.1.11:554/stream1"
+    capabilities: ["zones", "shelves"]
+    screenshot_size: [2872, 1570]
+
+    # Zones are polygons where we track dwell time
+    zones:
+      electronics:
+        - [476, 1312]
+        - [891, 1106]
+        - [1089, 1436]
+        - [631, 1492]
+
+      apparel:
+        - [1644, 742]
+        - [2168, 1027]
+        - [1931, 1302]
+        - [1565, 1027]
+
+    # Shelves are polygons where we detect interactions
+    shelves:
+      shelf_promo_01:
+        - [382, 418]
+        - [611, 322]
+        - [820, 1014]
+        - [509, 1177]
+
+      shelf_seasonal_01:
+        - [1200, 500]
+        - [1400, 450]
+        - [1450, 800]
+        - [1250, 850]
+
+  # Queue camera - monitors checkout wait times
+  - camera_id: "cam_checkout_01"
+    rtsp: "rtsp://username:password@192.168.1.12:554/stream1"
+    capabilities: ["queue"]
+    screenshot_size: [2872, 1570]
+
+    # Queue polygon
+    queue:
+      - [1590, 1101]
+      - [1878, 1343]
+      - [1730, 1506]
+      - [1216, 1483]
+
+# Notes:
+# 1. Get screenshot_size from your camera's native resolution
+# 2. Draw polygons using any image annotation tool on a screenshot
+# 3. Capabilities must match what backend expects:
+#    - entrance: Line crossing for footfall
+#    - zones: Area-based dwell tracking
+#    - shelves: Product interaction tracking
+#    - queue: Wait time measurement

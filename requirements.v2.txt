@@ -1,0 +1,19 @@
+# WINK Store Helper Requirements
+
+# Computer Vision
+ultralytics==8.0.200
+opencv-python==4.8.1.78
+norfair==2.2.0
+
+# Deep Learning
+torch==2.1.0
+torchvision==0.16.0
+
+# API & Networking
+requests==2.31.0
+tenacity==8.2.3
+pyyaml==6.0.1
+
+# Utilities
+numpy==1.24.3
+python-dateutil==2.8.2

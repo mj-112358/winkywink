@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  wink-edge:
+    build:
+      context: .
+      dockerfile: Dockerfile.v2
+    container_name: wink-store-helper
+    restart: unless-stopped
+
+    volumes:
+      # Mount config file
+      - ./config.yaml:/app/config.yaml:ro
+
+      # Persistent buffer for offline resilience
+      - ./buffers:/app/buffers
+
+      # Logs
+      - ./logs:/app/logs
+
+    environment:
+      - TZ=America/New_York
+      - PYTHONUNBUFFERED=1
+
+    # Network mode host for RTSP access
+    network_mode: host
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; exit(0 if os.path.exists('edge_runtime.log') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

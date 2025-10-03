@@ -1,0 +1,7 @@
+*.pt
+*.pyc
+__pycache__/
+buffers/
+logs/
+*.db
+*.log
