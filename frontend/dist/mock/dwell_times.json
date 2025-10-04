@@ -1,0 +1,6 @@
+{
+  "as_of": "2025-10-03T10:00:00Z",
+  "aisles": [
+    {"name": "Aisle 1", "avg_dwell_seconds": 150}
+  ]
+}

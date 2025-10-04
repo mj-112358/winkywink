@@ -1,8 +1,8 @@
 import { AppConfig } from '../types';
 
 export const config: AppConfig = {
-  apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  useMockData: import.meta.env.VITE_USE_MOCK_DATA === 'true',
+  apiBaseUrl: (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000',
+  useMockData: (import.meta as any).env?.VITE_USE_MOCK_DATA === 'true',
   refreshInterval: 5000, // 5 seconds
   maxRetries: 3,
 };

@@ -1,13 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Activity, 
-  Camera, 
-  MapPin, 
-  Lightbulb, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Activity,
+  Camera,
+  Settings as SettingsIcon,
+  MapPin,
+  Lightbulb,
+  BarChart3,
   Settings,
   ChevronLeft,
   ChevronRight
@@ -42,13 +43,19 @@ const Sidebar: React.FC<SidebarProps> = ({
       path: '/cameras',
       icon: Camera,
       label: 'Cameras',
-      description: 'RTSP camera management'
+      description: 'View cameras'
+    },
+    {
+      path: '/camera-config',
+      icon: SettingsIcon,
+      label: 'Camera Setup',
+      description: 'Configure cameras & zones'
     },
     {
       path: '/zones',
       icon: MapPin,
       label: 'Zones',
-      description: 'Zone configuration'
+      description: 'Zone analytics'
     },
     {
       path: '/insights',

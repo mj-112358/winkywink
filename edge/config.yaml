@@ -1,0 +1,40 @@
+# Edge Runtime Configuration
+# Copy this file and update with your store's settings
+
+api_url: "https://api.winkai.in"  # Your cloud API URL
+edge_key: "edge_7821e931_secret_key"  # Your edge key from database
+
+cameras:
+  - camera_id: "cam_entrance_001"
+    name: "Entrance Camera"
+    rtsp_url: "rtsp://192.168.1.101:554/stream"
+    zones:
+      - zone_id: "zone_entrance_in"
+        name: "Entrance In"
+        type: "line"
+        coordinates: [[100, 200], [500, 200]]
+        direction: "in"
+      - zone_id: "zone_entrance_out"
+        name: "Entrance Out"
+        type: "line"
+        coordinates: [[100, 300], [500, 300]]
+        direction: "out"
+
+  - camera_id: "cam_aisle_001"
+    name: "Aisle 1 Camera"
+    rtsp_url: "rtsp://192.168.1.102:554/stream"
+    zones:
+      - zone_id: "zone_shelf_snacks"
+        name: "Snacks Shelf"
+        type: "polygon"
+        coordinates: [[150, 100], [400, 100], [400, 300], [150, 300]]
+        shelf_category: "snacks"
+      - zone_id: "zone_shelf_beverages"
+        name: "Beverages Shelf"
+        type: "polygon"
+        coordinates: [[450, 100], [700, 100], [700, 300], [450, 300]]
+        shelf_category: "beverages"
+      - zone_id: "zone_aisle1_dwell"
+        name: "Aisle 1 Dwell Zone"
+        type: "polygon"
+        coordinates: [[100, 50], [750, 50], [750, 350], [100, 350]]

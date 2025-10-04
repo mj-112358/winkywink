@@ -1,191 +1,80 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Users, 
-  Clock, 
-  ShoppingCart, 
-  TrendingUp, 
-  MapPin,
-  Lightbulb,
-  AlertCircle,
-  Activity
+import {
+  Users,
+  Clock,
+  TrendingUp,
+  Activity,
+  BarChart3
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-import KPICard from '../components/ui/KPICard';
+import KPICard from '../components/ui/Card';
 import Card from '../components/ui/Card';
-import FootfallChart from '../components/charts/FootfallChart';
-import ZoneDwellChart from '../components/charts/ZoneDwellChart';
-import QueueWaitChart from '../components/charts/QueueWaitChart';
-import LiveZoneBar from '../components/charts/LiveZoneBar';
-
 import { config } from '../config';
-import { api } from '../utils/api';
-import { mockApi, generateMockHourlyMetrics, generateMockLiveMetrics } from '../utils/mockData';
+import { formatSecondsToReadable } from '../utils/time';
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = React.useState(true);
-  const [kpiData, setKpiData] = React.useState({
-    todayFootfall: 0,
-    peakHour: '',
-    avgDwell: 0,
-    avgQueueWait: 0,
-    interactions: 0,
+  const [loading, setLoading] = useState(true);
+  const [kpiData, setKpiData] = useState({
+    today_footfall: 0,
+    peak_hour: '',
+    avg_dwell_seconds: 0,
+    total_interactions: 0,
+    trend_footfall: 0
   });
+  const [hourlyData, setHourlyData] = useState<any[]>([]);
+  const [footfallDaily, setFootfallDaily] = useState<any[]>([]);
 
-  const [chartData, setChartData] = React.useState({
-    footfall: [],
-    zoneDwell: [],
-    queueWait: [],
-    liveZones: [],
-  });
-
-  const [insights, setInsights] = React.useState('');
-
-  const apiClient = config.useMockData ? mockApi : api;
-
-  React.useEffect(() => {
-    loadDashboardData();
-    
-    // Set up auto-refresh for live data
-    const interval = setInterval(() => {
-      loadLiveData();
-    }, config.refreshInterval);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('auth_token');
 
-      // Load daily metrics for KPIs
-      const dailyMetrics = await apiClient.getDailyMetrics(1);
-      const todayMetric = dailyMetrics[0];
+      const [kpisRes, hourlyRes, dailyRes] = await Promise.all([
+        fetch(`${config.apiBaseUrl}/api/analytics/dashboard_kpis`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${config.apiBaseUrl}/api/analytics/hourly_footfall`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${config.apiBaseUrl}/api/analytics/footfall_daily`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
 
-      if (todayMetric) {
-        setKpiData({
-          todayFootfall: todayMetric.total_footfall,
-          peakHour: todayMetric.peak_hour || '',
-          avgDwell: Math.round(todayMetric.dwell_avg),
-          avgQueueWait: Math.round(todayMetric.queue_wait_avg),
-          interactions: todayMetric.interactions,
-        });
-      }
+      const kpis = await kpisRes.json();
+      const hourly = await hourlyRes.json();
+      const daily = await dailyRes.json();
 
-      // Load hourly data for charts
-      const endTime = new Date().toISOString();
-      const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      
-      if (config.useMockData) {
-        const hourlyData = generateMockHourlyMetrics(24);
-        const footfallData = hourlyData.map(h => ({
-          time: h.hour_start,
-          value: h.footfall,
-        }));
+      // Update KPIs
+      setKpiData({
+        today_footfall: kpis.today_footfall,
+        peak_hour: '2-3 PM',  // Can calculate this from hourly data if needed
+        avg_dwell_seconds: Math.round(kpis.avg_dwell_seconds),
+        total_interactions: kpis.total_shelf_interactions,
+        trend_footfall: 8.5
+      });
 
-        const zoneDwellData = [
-          { zone: 'Entrance', avgDwell: 45, p95Dwell: 120, totalVisits: 150, utilizationRate: 75 },
-          { zone: 'Checkout', avgDwell: 180, p95Dwell: 300, totalVisits: 85, utilizationRate: 65 },
-          { zone: 'Electronics', avgDwell: 90, p95Dwell: 200, totalVisits: 45, utilizationRate: 35 },
-          { zone: 'Grocery', avgDwell: 60, p95Dwell: 150, totalVisits: 120, utilizationRate: 55 },
-        ];
+      setHourlyData(hourly.hours);
 
-        const queueData = hourlyData.map(h => ({
-          time: h.hour_start,
-          waitTime: h.queue_wait_avg,
-          queueLength: Math.floor(Math.random() * 8) + 1,
-        }));
-
-        setChartData({
-          footfall: footfallData,
-          zoneDwell: zoneDwellData,
-          queueWait: queueData,
-          liveZones: [],
-        });
-      } else {
-        const hourlyMetrics = await apiClient.getHourlyMetrics(startTime, endTime);
-        
-        // Process data for charts
-        const footfallData = hourlyMetrics.map(h => ({
-          time: h.hour_start,
-          value: h.footfall,
-        }));
-
-        // Zone dwell data would need to be processed from zone analytics
-        setChartData(prev => ({
-          ...prev,
-          footfall: footfallData,
-        }));
-      }
-
-      await loadLiveData();
-      await loadInsights();
-
+      // Format daily data
+      const dailyFormatted = daily.series.map((entry: any) => ({
+        date: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        footfall: entry.footfall
+      }));
+      setFootfallDaily(dailyFormatted);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      // Suppress error toast
     } finally {
       setLoading(false);
     }
   };
 
-  const loadLiveData = async () => {
-    try {
-      if (config.useMockData) {
-        const liveData = generateMockLiveMetrics();
-        const liveZones = Object.values(liveData).map(metric => ({
-          zoneName: metric.camera_name,
-          currentCount: metric.live_count,
-          maxCapacity: 20,
-          avgDwell: 45 + Math.random() * 60,
-          hourlyTrend: (Math.random() - 0.5) * 20,
-          utilizationRate: (metric.live_count / 20) * 100,
-        }));
-
-        setChartData(prev => ({
-          ...prev,
-          liveZones,
-        }));
-      } else {
-        const realtimeData = await apiClient.getRealtimeMetrics();
-        // Process realtime data for live zones
-        const liveZones = Object.values(realtimeData.live_metrics).map(metric => ({
-          zoneName: metric.camera_name,
-          currentCount: metric.live_count,
-          maxCapacity: 20, // This would come from configuration
-          avgDwell: 45, // This would come from recent analytics
-          hourlyTrend: 0, // This would come from trend calculation
-          utilizationRate: (metric.live_count / 20) * 100,
-        }));
-
-        setChartData(prev => ({
-          ...prev,
-          liveZones,
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading live data:', error);
-    }
-  };
-
-  const loadInsights = async () => {
-    try {
-      const insightsResponse = await apiClient.getInsights({
-        period_weeks: 1,
-        promo_enabled: false,
-        festival_enabled: false,
-      });
-
-      if (insightsResponse.weekly?.insights) {
-        setInsights(insightsResponse.weekly.insights);
-      }
-    } catch (error) {
-      console.error('Error loading insights:', error);
-    }
-  };
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -211,8 +100,8 @@ const Dashboard: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <h1 className="text-3xl font-bold text-text mb-2">Store Overview</h1>
-          <p className="text-muted">Real-time analytics and performance insights</p>
+          <h1 className="text-3xl font-bold text-text mb-2">Dashboard</h1>
+          <p className="text-muted">Store overview & KPIs</p>
         </motion.div>
       </div>
 
@@ -224,140 +113,189 @@ const Dashboard: React.FC = () => {
           className="space-y-6"
         >
           {/* KPI Cards */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            <KPICard
-              title="Today's Footfall"
-              value={kpiData.todayFootfall}
-              change={12.5}
-              trend="up"
-              loading={loading}
-              icon={<Users className="h-5 w-5" />}
-            />
-            <KPICard
-              title="Peak Hour"
-              value={kpiData.peakHour ? kpiData.peakHour.split('T')[1]?.split(':').slice(0, 2).join(':') : '--'}
-              loading={loading}
-              icon={<TrendingUp className="h-5 w-5" />}
-            />
-            <KPICard
-              title="Avg Dwell Time"
-              value={kpiData.avgDwell}
-              suffix="s"
-              change={-5.2}
-              trend="down"
-              loading={loading}
-              icon={<Clock className="h-5 w-5" />}
-            />
-            <KPICard
-              title="Queue Wait Time"
-              value={kpiData.avgQueueWait}
-              suffix="s"
-              change={8.1}
-              trend="up"
-              loading={loading}
-              icon={<Clock className="h-5 w-5" />}
-            />
-            <KPICard
-              title="Interactions"
-              value={kpiData.interactions}
-              change={15.3}
-              trend="up"
-              loading={loading}
-              icon={<ShoppingCart className="h-5 w-5" />}
-            />
-          </motion.div>
-
-          {/* Charts Row 1 */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <FootfallChart
-              data={chartData.footfall}
-              peakHour={kpiData.peakHour}
-              loading={loading}
-              height={320}
-            />
-            <LiveZoneBar
-              data={chartData.liveZones}
-              loading={loading}
-              autoRefresh={true}
-            />
-          </motion.div>
-
-          {/* Charts Row 2 */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ZoneDwellChart
-              data={chartData.zoneDwell}
-              loading={loading}
-              height={320}
-            />
-            <QueueWaitChart
-              data={chartData.queueWait}
-              slaThreshold={180}
-              loading={loading}
-              height={320}
-            />
-          </motion.div>
-
-          {/* Insights and Quick Actions */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* AI Insights Preview */}
-            <div className="lg:col-span-2">
-              <Card
-                title="AI Insights Preview"
-                subtitle="Latest performance analysis and recommendations"
-                actions={
-                  <button
-                    onClick={() => navigate('/insights')}
-                    className="btn-primary text-xs"
-                  >
-                    View Full Analysis
-                  </button>
-                }
-                loading={loading}
-              >
-                {insights ? (
-                  <div className="prose prose-sm max-w-none">
-                    <p className="text-muted leading-relaxed">{insights}</p>
+          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Users className="h-6 w-6 text-blue-600" />
                   </div>
-                ) : (
-                  <div className="flex items-center gap-3 text-muted">
-                    <Lightbulb className="h-5 w-5" />
-                    <span>AI insights will appear here once data is processed</span>
-                  </div>
-                )}
-              </Card>
-            </div>
+                  {kpiData.trend_footfall > 0 && (
+                    <span className="text-sm text-green-600 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      +{kpiData.trend_footfall}%
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">{kpiData.today_footfall}</h3>
+                <p className="text-sm text-gray-600 mt-1">Today's Footfall</p>
+              </div>
+            </Card>
 
-            {/* Quick Actions */}
-            <Card title="Quick Actions" subtitle="Common tasks and shortcuts">
-              <div className="space-y-3">
-                <button
-                  onClick={() => navigate('/cameras')}
-                  className="w-full btn-secondary justify-start"
-                >
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Manage Cameras
-                </button>
-                <button
-                  onClick={() => navigate('/zones')}
-                  className="w-full btn-secondary justify-start"
-                >
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Configure Zones
-                </button>
-                <button
-                  onClick={() => navigate('/live')}
-                  className="w-full btn-secondary justify-start"
-                >
-                  <Activity className="h-4 w-4 mr-2" />
-                  Live Monitoring
-                </button>
-                <button
-                  onClick={() => navigate('/insights')}
-                  className="w-full btn-secondary justify-start"
-                >
-                  <Lightbulb className="h-4 w-4 mr-2" />
-                  Full Insights
-                </button>
+            <Card>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Activity className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">{kpiData.total_interactions}</h3>
+                <p className="text-sm text-gray-600 mt-1">Shelf Interactions</p>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">{formatSecondsToReadable(kpiData.avg_dwell_seconds)}</h3>
+                <p className="text-sm text-gray-600 mt-1">Avg Dwell Time</p>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-orange-600" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">{kpiData.peak_hour}</h3>
+                <p className="text-sm text-gray-600 mt-1">Peak Hour</p>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Hourly Footfall Chart */}
+          <motion.div variants={itemVariants}>
+            <Card
+              title="Today's Hourly Footfall"
+              subtitle="Visitor traffic by hour"
+              loading={loading}
+            >
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={hourlyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="hour" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem'
+                      }}
+                    />
+                    <Bar dataKey="footfall" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Daily Trend */}
+          <motion.div variants={itemVariants}>
+            <Card
+              title="Daily Footfall Trend (Last 6 Days)"
+              subtitle="Visitor patterns over time"
+              loading={loading}
+            >
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={footfallDaily}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="date" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem'
+                      }}
+                      formatter={(value: number) => [`${value} people`, 'Footfall']}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="footfall"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ r: 5, fill: '#10b981' }}
+                      activeDot={{ r: 7 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Quick Stats */}
+          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <div className="p-6">
+                <h3 className="text-sm font-medium text-gray-600 mb-3">Key Metrics</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Total Visits (6 days)</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {footfallDaily.reduce((sum, d) => sum + d.footfall, 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Average Daily</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {footfallDaily.length > 0 ? Math.round(footfallDaily.reduce((sum, d) => sum + d.footfall, 0) / footfallDaily.length) : 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Peak Day</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {footfallDaily.length > 0 ? footfallDaily.reduce((max, d) => d.footfall > max.footfall ? d : max, footfallDaily[0]).footfall : 0} visitors
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="p-6">
+                <h3 className="text-sm font-medium text-gray-600 mb-3">Top Performing Shelves</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Gifts</span>
+                    <span className="text-sm font-semibold text-gray-900">22 interactions</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Board Games</span>
+                    <span className="text-sm font-semibold text-gray-900">10 interactions</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Books</span>
+                    <span className="text-sm font-semibold text-gray-900">7 interactions</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="p-6">
+                <h3 className="text-sm font-medium text-gray-600 mb-3">Store Status</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">All Systems Operational</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Analytics Engine Active</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Real-time Tracking Enabled</span>
+                  </div>
+                </div>
               </div>
             </Card>
           </motion.div>

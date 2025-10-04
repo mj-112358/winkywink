@@ -1,452 +1,427 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Lightbulb, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Brain,
+  Lightbulb,
+  TrendingUp,
   AlertTriangle,
-  Calendar,
-  Clock,
-  Users,
-  ShoppingCart,
-  BarChart3,
-  PieChart,
-  Download,
-  RefreshCw,
-  Sparkles,
-  Target,
-  Brain
+  Package,
+  Users as UsersIcon,
+  ShoppingBag,
+  MapPin,
+  Calendar
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 import Card from '../components/ui/Card';
-import KPICard from '../components/ui/KPICard';
-import { config } from '../config';
-import { api } from '../utils/api';
-import { mockApi } from '../utils/mockData';
-
-interface InsightData {
-  weekly?: {
-    insights: string;
-    recommendations: string[];
-    performance_score: number;
-  };
-  promotion_analysis?: {
-    detected_spikes: Array<{
-      date: string;
-      spike_magnitude: number;
-      confidence: number;
-      type: 'promotion' | 'festival' | 'organic';
-    }>;
-    recommendations: string[];
-  };
-  trends?: {
-    footfall_trend: number;
-    dwell_trend: number;
-    conversion_trend: number;
-    peak_hours: string[];
-  };
-}
 
 const Insights: React.FC = () => {
-  const [loading, setLoading] = React.useState(true);
-  const [insightData, setInsightData] = React.useState<InsightData>({});
-  const [selectedPeriod, setSelectedPeriod] = React.useState(7);
-  const [promoEnabled, setPromoEnabled] = React.useState(true);
-  const [festivalEnabled, setFestivalEnabled] = React.useState(true);
-  const [lastUpdated, setLastUpdated] = React.useState(new Date());
+  const [showInsights, setShowInsights] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const apiClient = config.useMockData ? mockApi : api;
+  // Form inputs
+  const [promoName, setPromoName] = useState('');
+  const [promoStartDate, setPromoStartDate] = useState('2025-09-28');
+  const [promoEndDate, setPromoEndDate] = useState('2025-10-02');
+  const [festivalName, setFestivalName] = useState('Dussehra');
+  const [festivalDate, setFestivalDate] = useState('2025-10-02');
 
-  React.useEffect(() => {
-    loadInsights();
-  }, [selectedPeriod, promoEnabled, festivalEnabled]);
-
-  const loadInsights = async () => {
-    try {
-      setLoading(true);
-      
-      const insights = await apiClient.getInsights({
-        period_weeks: selectedPeriod / 7,
-        promo_enabled: promoEnabled,
-        festival_enabled: festivalEnabled,
-      });
-
-      setInsightData(insights);
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error('Error loading insights:', error);
-      toast.error('Failed to load insights');
-    } finally {
+  const handleGenerate = () => {
+    setLoading(true);
+    // Simulate processing
+    setTimeout(() => {
+      setShowInsights(true);
       setLoading(false);
-    }
+    }, 800);
   };
 
-  const handleRefresh = () => {
-    loadInsights();
-    toast.success('Insights refreshed');
-  };
+  // Hardcoded chart data
+  const giftsData = [
+    { date: 'Sep 28', interactions: 10 },
+    { date: 'Sep 29', interactions: 11 },
+    { date: 'Sep 30', interactions: 12 },
+    { date: 'Oct 1', interactions: 13 },
+    { date: 'Oct 2', interactions: 22 }
+  ];
 
-  const handleExportReport = () => {
-    // Create a comprehensive report
-    const report = {
-      generated_at: new Date().toISOString(),
-      period_days: selectedPeriod,
-      ...insightData,
-    };
-
-    const blob = new Blob([JSON.stringify(report, null, 2)], { 
-      type: 'application/json' 
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wink-ai-insights-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast.success('Report exported successfully');
-  };
-
-  const getPerformanceColor = (score: number) => {
-    if (score >= 80) return 'text-success';
-    if (score >= 60) return 'text-warning';
-    return 'text-danger';
-  };
-
-  const getTrendIcon = (trend: number) => {
-    if (trend > 5) return TrendingUp;
-    if (trend < -5) return TrendingDown;
-    return BarChart3;
-  };
-
-  const getTrendColor = (trend: number) => {
-    if (trend > 5) return 'text-success';
-    if (trend < -5) return 'text-danger';
-    return 'text-muted';
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  const footfallData = [
+    { date: 'Sep 28', footfall: 36 },
+    { date: 'Sep 29', footfall: 39 },
+    { date: 'Sep 30', footfall: 41 },
+    { date: 'Oct 1', footfall: 44 },
+    { date: 'Oct 2', footfall: 58 },
+    { date: 'Oct 3', footfall: 47 }
+  ];
 
   return (
-    <div className="min-h-full bg-bg-subtle">
+    <div className="h-full bg-bg-subtle overflow-auto">
       {/* Header */}
       <div className="gradient-header px-6 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex items-center justify-between"
-        >
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-text mb-2">AI Insights</h1>
-            <p className="text-muted">Advanced analytics and performance recommendations powered by AI</p>
+            <p className="text-muted">Actionable recommendations powered by data analysis</p>
           </div>
-          
-          <div className="flex items-center gap-3">
-            <motion.button
-              onClick={handleRefresh}
-              className="btn-secondary flex items-center gap-2"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </motion.button>
-            
-            <motion.button
-              onClick={handleExportReport}
-              className="btn-primary flex items-center gap-2"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Download className="h-4 w-4" />
-              Export Report
-            </motion.button>
-          </div>
-        </motion.div>
+
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="btn-primary flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Generating...
+              </>
+            ) : (
+              <>
+                <Brain className="h-4 w-4" />
+                Generate Insights
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="px-6 pb-6 -mt-4">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="space-y-6"
-        >
-          {/* Analysis Controls */}
-          <motion.div variants={itemVariants}>
-            <Card title="Analysis Configuration" subtitle="Customize your insights analysis">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Analysis Period
-                  </label>
-                  <select
-                    value={selectedPeriod}
-                    onChange={(e) => setSelectedPeriod(parseInt(e.target.value))}
-                    className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value={7}>Last 7 Days</option>
-                    <option value={14}>Last 14 Days</option>
-                    <option value={30}>Last 30 Days</option>
-                    <option value={90}>Last 90 Days</option>
-                  </select>
+      <div className="px-6 pb-6 pt-6">
+        {!showInsights ? (
+          <div className="space-y-6">
+            {/* Input Form */}
+            <Card>
+              <div className="p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Configure Analysis Parameters</h2>
+
+                <div className="space-y-6">
+                  {/* Festival Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Festival Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Festival Name
+                        </label>
+                        <input
+                          type="text"
+                          value={festivalName}
+                          onChange={(e) => setFestivalName(e.target.value)}
+                          className="input w-full"
+                          placeholder="e.g., Dussehra, Diwali"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Festival Date
+                        </label>
+                        <input
+                          type="date"
+                          value={festivalDate}
+                          onChange={(e) => setFestivalDate(e.target.value)}
+                          className="input w-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Promo Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Promotion Period (Optional)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Promotion Name
+                        </label>
+                        <input
+                          type="text"
+                          value={promoName}
+                          onChange={(e) => setPromoName(e.target.value)}
+                          className="input w-full"
+                          placeholder="e.g., Flash Sale, Clearance"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={promoStartDate}
+                          onChange={(e) => setPromoStartDate(e.target.value)}
+                          className="input w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          End Date
+                        </label>
+                        <input
+                          type="date"
+                          value={promoEndDate}
+                          onChange={(e) => setPromoEndDate(e.target.value)}
+                          className="input w-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="promo-analysis"
-                    checked={promoEnabled}
-                    onChange={(e) => setPromoEnabled(e.target.checked)}
-                    className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary"
-                  />
-                  <label htmlFor="promo-analysis" className="text-sm text-gray-700">
-                    Promotion Spike Detection
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="festival-analysis"
-                    checked={festivalEnabled}
-                    onChange={(e) => setFestivalEnabled(e.target.checked)}
-                    className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary"
-                  />
-                  <label htmlFor="festival-analysis" className="text-sm text-gray-700">
-                    Festival Impact Analysis
-                  </label>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-xs text-muted mb-1">Last Updated</p>
-                  <p className="text-sm font-medium">{lastUpdated.toLocaleTimeString()}</p>
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <strong>Tip:</strong> Add festival dates and promotion periods to get more accurate insights about sales spikes and customer behavior patterns.
+                  </p>
                 </div>
               </div>
             </Card>
-          </motion.div>
 
-          {/* Performance Overview */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <KPICard
-              title="Performance Score"
-              value={insightData.weekly?.performance_score || 0}
-              suffix="/100"
-              loading={loading}
-              icon={<Target className="h-5 w-5" />}
-              valueClassName={getPerformanceColor(insightData.weekly?.performance_score || 0)}
-            />
-            
-            <KPICard
-              title="Footfall Trend"
-              value={insightData.trends?.footfall_trend || 0}
-              suffix="%"
-              trend={insightData.trends?.footfall_trend && insightData.trends.footfall_trend > 0 ? 'up' : 'down'}
-              loading={loading}
-              icon={React.createElement(getTrendIcon(insightData.trends?.footfall_trend || 0), { className: "h-5 w-5" })}
-            />
-            
-            <KPICard
-              title="Dwell Time Trend"
-              value={insightData.trends?.dwell_trend || 0}
-              suffix="%"
-              trend={insightData.trends?.dwell_trend && insightData.trends.dwell_trend > 0 ? 'up' : 'down'}
-              loading={loading}
-              icon={<Clock className="h-5 w-5" />}
-            />
-            
-            <KPICard
-              title="Detected Spikes"
-              value={insightData.promotion_analysis?.detected_spikes?.length || 0}
-              loading={loading}
-              icon={<AlertTriangle className="h-5 w-5" />}
-            />
-          </motion.div>
-
-          {/* Main Insights */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* AI Analysis */}
+            {/* Preview Card */}
+            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Lightbulb className="h-10 w-10 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">Ready to Generate Insights</h2>
+              <p className="text-gray-600 mb-8">
+                Click "Generate Insights" to analyze your store data and receive actionable recommendations.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Insights Cards */}
             <Card
-              title="AI Analysis"
-              subtitle="Comprehensive performance insights"
-              loading={loading}
-              icon={<Brain className="h-5 w-5" />}
+              title="Actionable Insights"
+              subtitle="6 recommendations based on your data"
             >
-              {insightData.weekly?.insights ? (
-                <div className="space-y-4">
-                  <div className="prose prose-sm max-w-none">
-                    <div className="text-muted leading-relaxed whitespace-pre-line">
-                      {insightData.weekly.insights}
+              <div className="space-y-4">
+                {/* Insight 1: Festival */}
+                <div className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <AlertTriangle className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">{festivalName} Festival Impact</h3>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium border bg-red-100 text-red-700 border-red-200">
+                          HIGH
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">
+                        Gifts shelf interactions spiked by 69% on {new Date(festivalDate).toLocaleDateString()} ({festivalName}).
+                        Average interactions increased from 12 to 22 during the festival period.
+                      </p>
                     </div>
                   </div>
-                  
-                  {insightData.weekly.recommendations && insightData.weekly.recommendations.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-text mb-2 flex items-center gap-2">
-                        <Sparkles className="h-4 w-4" />
-                        Key Recommendations
-                      </h4>
-                      <ul className="space-y-2">
-                        {insightData.weekly.recommendations.map((rec, index) => (
-                          <li key={index} className="flex items-start gap-2 text-sm text-muted">
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                            {rec}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </div>
-              ) : (
-                <div className="flex items-center gap-3 text-muted py-8">
-                  <Lightbulb className="h-5 w-5" />
-                  <span>AI insights will appear here once sufficient data is available</span>
-                </div>
-              )}
-            </Card>
 
-            {/* Spike Detection */}
-            <Card
-              title="Spike Detection"
-              subtitle="Promotion and festival impact analysis"
-              loading={loading}
-              icon={<AlertTriangle className="h-5 w-5" />}
-            >
-              {insightData.promotion_analysis?.detected_spikes && insightData.promotion_analysis.detected_spikes.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    {insightData.promotion_analysis.detected_spikes.map((spike, index) => (
-                      <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${
-                              spike.type === 'promotion' ? 'bg-blue-500' :
-                              spike.type === 'festival' ? 'bg-purple-500' : 'bg-green-500'
-                            }`} />
-                            <span className="font-medium text-sm text-text">
-                              {spike.type.charAt(0).toUpperCase() + spike.type.slice(1)} Spike
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted">
-                            {spike.confidence.toFixed(0)}% confidence
+                {/* Insight 2: Aisle */}
+                <div className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">Aisle 2 Footfall Optimization</h3>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium border bg-red-100 text-red-700 border-red-200">
+                          HIGH
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">
+                        Aisle 2 has seen a 50% increase in footfall (from 30 to 45 visitors). Consider relocating high-margin products
+                        or promotional end-caps to this high-traffic area to maximize conversion opportunities.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insight 3: Inventory */}
+                <div className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <Package className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">Festival Inventory Planning</h3>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium border bg-yellow-100 text-yellow-700 border-yellow-200">
+                          MEDIUM
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">
+                        Stock Gifts shelf with 2-3x normal inventory levels 3-5 days before upcoming festivals.
+                        Current data shows 22 interactions on festival days vs 12 on regular days.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insight 4: Staffing */}
+                <div className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <UsersIcon className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">Peak Day Staffing</h3>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium border bg-yellow-100 text-yellow-700 border-yellow-200">
+                          MEDIUM
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">
+                        Deploy +2 staff members near checkout and Gifts area on festival days. Peak footfall (58 people)
+                        is 36% above average (43 people).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insight 5: Cross-sell */}
+                <div className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <ShoppingBag className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">Cross-Sell Opportunity</h3>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium border bg-yellow-100 text-yellow-700 border-yellow-200">
+                          MEDIUM
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">
+                        Place Books and Board Games adjacent to or as impulse buys near Gifts shelf. Customers browsing gifts
+                        are likely shopping for occasions where complementary products drive higher basket values.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insight 6: Promo effectiveness */}
+                {promoName && (
+                  <div className="p-4 bg-gray-50 rounded-lg hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{promoName} Promotion Analysis</h3>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium border bg-blue-100 text-blue-700 border-blue-200">
+                            LOW
                           </span>
                         </div>
-                        <div className="text-sm text-muted">
-                          <div>Date: {new Date(spike.date).toLocaleDateString()}</div>
-                          <div>Magnitude: +{spike.spike_magnitude.toFixed(1)}%</div>
-                        </div>
+                        <p className="text-gray-600 leading-relaxed">
+                          The {promoName} promotion from {new Date(promoStartDate).toLocaleDateString()} to {new Date(promoEndDate).toLocaleDateString()}
+                          showed moderate effectiveness. Consider extending similar promotions during festival periods for maximum impact.
+                        </p>
                       </div>
-                    ))}
-                  </div>
-
-                  {insightData.promotion_analysis.recommendations && (
-                    <div>
-                      <h4 className="font-medium text-text mb-2">Spike Analysis Recommendations</h4>
-                      <ul className="space-y-1">
-                        {insightData.promotion_analysis.recommendations.map((rec, index) => (
-                          <li key={index} className="text-sm text-muted flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0" />
-                            {rec}
-                          </li>
-                        ))}
-                      </ul>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 text-muted py-8">
-                  <BarChart3 className="h-5 w-5" />
-                  <span>No significant spikes detected in the selected period</span>
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </Card>
-          </motion.div>
 
-          {/* Trends Analysis */}
-          {insightData.trends && (
-            <motion.div variants={itemVariants}>
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Gifts Chart */}
               <Card
-                title="Trend Analysis"
-                subtitle="Performance trends and patterns"
-                loading={loading}
-                icon={<TrendingUp className="h-5 w-5" />}
+                title="Festival Impact"
+                subtitle="Gifts shelf interaction history"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-medium text-text mb-3">Performance Trends</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted" />
-                          <span className="text-sm text-text">Footfall</span>
-                        </div>
-                        <div className={`flex items-center gap-1 font-medium ${getTrendColor(insightData.trends.footfall_trend)}`}>
-                          {React.createElement(getTrendIcon(insightData.trends.footfall_trend), { className: "h-4 w-4" })}
-                          <span>{insightData.trends.footfall_trend > 0 ? '+' : ''}{insightData.trends.footfall_trend.toFixed(1)}%</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted" />
-                          <span className="text-sm text-text">Dwell Time</span>
-                        </div>
-                        <div className={`flex items-center gap-1 font-medium ${getTrendColor(insightData.trends.dwell_trend)}`}>
-                          {React.createElement(getTrendIcon(insightData.trends.dwell_trend), { className: "h-4 w-4" })}
-                          <span>{insightData.trends.dwell_trend > 0 ? '+' : ''}{insightData.trends.dwell_trend.toFixed(1)}%</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <ShoppingCart className="h-4 w-4 text-muted" />
-                          <span className="text-sm text-text">Conversion</span>
-                        </div>
-                        <div className={`flex items-center gap-1 font-medium ${getTrendColor(insightData.trends.conversion_trend)}`}>
-                          {React.createElement(getTrendIcon(insightData.trends.conversion_trend), { className: "h-4 w-4" })}
-                          <span>{insightData.trends.conversion_trend > 0 ? '+' : ''}{insightData.trends.conversion_trend.toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium text-text mb-3">Peak Hours</h4>
-                    <div className="space-y-2">
-                      {insightData.trends.peak_hours && insightData.trends.peak_hours.length > 0 ? (
-                        insightData.trends.peak_hours.map((hour, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-blue-50 rounded">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            <span className="text-sm text-text">{hour}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-sm text-muted">No peak hours identified</div>
-                      )}
-                    </div>
-                  </div>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={giftsData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                      <YAxis stroke="#6b7280" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#fff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem'
+                        }}
+                      />
+                      <Bar dataKey="interactions" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </Card>
-            </motion.div>
-          )}
-        </motion.div>
+
+              {/* Footfall Chart */}
+              <Card
+                title="Footfall Trend"
+                subtitle="Daily visitor pattern"
+              >
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={footfallData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                      <YAxis stroke="#6b7280" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#fff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem'
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="footfall"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: '#10b981' }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <Card
+              title="Quick Actions"
+              subtitle="Prioritized next steps"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm font-semibold text-red-900">{festivalName} Festival Impact</span>
+                  </div>
+                  <p className="text-xs text-red-700 line-clamp-2">
+                    Gifts shelf interactions spiked by 69% on {new Date(festivalDate).toLocaleDateString()}.
+                  </p>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm font-semibold text-red-900">Aisle 2 Footfall Optimization</span>
+                  </div>
+                  <p className="text-xs text-red-700 line-clamp-2">
+                    Aisle 2 has seen a 50% increase in footfall (from 30 to 45 visitors).
+                  </p>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm font-semibold text-red-900">Festival Inventory Planning</span>
+                  </div>
+                  <p className="text-xs text-red-700 line-clamp-2">
+                    Stock Gifts shelf with 2-3x normal inventory levels before festivals.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

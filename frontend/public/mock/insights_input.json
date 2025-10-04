@@ -1,0 +1,17 @@
+{
+  "festival": {"name": "Dussehra", "date": "2025-10-02"},
+  "shelf_interactions": {
+    "baseline_window_days": 5,
+    "current": {"Books": 7, "Gifts": 22, "Board Games": 10},
+    "history": [
+      {"date": "2025-09-28", "Gifts": 10},
+      {"date": "2025-09-29", "Gifts": 11},
+      {"date": "2025-09-30", "Gifts": 12},
+      {"date": "2025-10-01", "Gifts": 13},
+      {"date": "2025-10-02", "Gifts": 22}
+    ]
+  },
+  "dwell": {"Aisle 1": 150},
+  "footfall_daily": [36,39,41,44,58,47],
+  "aisle_footfall_change": {"Aisle 2": {"baseline": 30, "current": 45}}
+}

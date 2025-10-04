@@ -19,6 +19,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Live from './pages/Live';
 import Cameras from './pages/Cameras';
+import CameraConfig from './pages/CameraConfig';
 import Zones from './pages/Zones';
 import Insights from './pages/Insights';
 import Reports from './pages/Reports';
@@ -35,6 +36,7 @@ function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="live" element={<Live />} />
                 <Route path="cameras" element={<Cameras />} />
+                <Route path="camera-config" element={<CameraConfig />} />
                 <Route path="zones" element={<Zones />} />
                 <Route path="insights" element={<Insights />} />
                 <Route path="reports" element={<Reports />} />

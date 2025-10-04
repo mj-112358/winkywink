@@ -43,29 +43,46 @@ def upgrade() -> None:
         sa.Column('store_id', sa.String(), nullable=False),
         sa.Column('name', sa.String(), nullable=False),
         sa.Column('is_entrance', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('rtsp_url', sa.String(), nullable=True),
         sa.Column('capabilities', postgresql.ARRAY(sa.String()), nullable=True),
-        sa.Column('config', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('config', postgresql.JSONB(), nullable=False, server_default='{}'),
+        sa.Column('last_heartbeat_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.ForeignKeyConstraint(['store_id'], ['stores_extended.store_id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('camera_id')
     )
     op.create_index(op.f('ix_cameras_extended_store_id'), 'cameras_extended', ['store_id'], unique=False)
+    # GIN index for JSONB config queries
+    op.execute('CREATE INDEX idx_cameras_config_gin ON cameras_extended USING gin(config)')
+
+    # Create users table
+    op.create_table('users',
+        sa.Column('user_id', sa.String(), nullable=False),
+        sa.Column('org_id', sa.String(), nullable=False),
+        sa.Column('store_id', sa.String(), nullable=True),
+        sa.Column('email', sa.String(), nullable=False),
+        sa.Column('password_hash', sa.String(), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+        sa.ForeignKeyConstraint(['org_id'], ['orgs.org_id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['store_id'], ['stores_extended.store_id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('user_id'),
+        sa.UniqueConstraint('email')
+    )
+    op.create_index(op.f('ix_users_org_id'), 'users', ['org_id'], unique=False)
+    op.create_index(op.f('ix_users_store_id'), 'users', ['store_id'], unique=False)
 
     # Create edge_keys table
     op.create_table('edge_keys',
-        sa.Column('token', sa.String(), nullable=False),
+        sa.Column('key', sa.String(), nullable=False),
         sa.Column('org_id', sa.String(), nullable=False),
         sa.Column('store_id', sa.String(), nullable=False),
-        sa.Column('camera_id', sa.String(), nullable=False),
-        sa.Column('active', sa.Boolean(), nullable=True),
+        sa.Column('active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-        sa.Column('last_seen', sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(['camera_id'], ['cameras_extended.camera_id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['org_id'], ['orgs.org_id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['store_id'], ['stores_extended.store_id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('token')
+        sa.PrimaryKeyConstraint('key')
     )
-    op.create_index(op.f('ix_edge_keys_camera_id'), 'edge_keys', ['camera_id'], unique=False)
     op.create_index(op.f('ix_edge_keys_org_id'), 'edge_keys', ['org_id'], unique=False)
     op.create_index(op.f('ix_edge_keys_store_id'), 'edge_keys', ['store_id'], unique=False)
 
@@ -132,9 +149,13 @@ def downgrade() -> None:
 
     op.drop_index(op.f('ix_edge_keys_store_id'), table_name='edge_keys')
     op.drop_index(op.f('ix_edge_keys_org_id'), table_name='edge_keys')
-    op.drop_index(op.f('ix_edge_keys_camera_id'), table_name='edge_keys')
     op.drop_table('edge_keys')
 
+    op.drop_index(op.f('ix_users_store_id'), table_name='users')
+    op.drop_index(op.f('ix_users_org_id'), table_name='users')
+    op.drop_table('users')
+
+    op.execute('DROP INDEX IF EXISTS idx_cameras_config_gin')
     op.drop_index(op.f('ix_cameras_extended_store_id'), table_name='cameras_extended')
     op.drop_table('cameras_extended')
 

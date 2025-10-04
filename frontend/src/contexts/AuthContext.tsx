@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
+      // Real API login
       const response = await fetch(`${config.apiBaseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -55,18 +56,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Login failed');
+        const error = await response.json().catch(() => ({ detail: 'Login failed' }));
+        throw new Error(error.detail || 'Login failed');
       }
 
       const data = await response.json();
-      const { access_token, user: userData } = data;
+      const apiToken = data.access_token;
+      const apiUser = {
+        id: data.user.user_id,
+        email: data.user.email,
+        role: 'user',
+        store_id: data.user.store_id,
+      };
 
-      setToken(access_token);
-      setUser(userData);
-
-      localStorage.setItem('auth_token', access_token);
-      localStorage.setItem('user_data', JSON.stringify(userData));
+      setToken(apiToken);
+      setUser(apiUser);
+      localStorage.setItem('auth_token', apiToken);
+      localStorage.setItem('user_data', JSON.stringify(apiUser));
     } catch (error) {
       throw error;
     } finally {

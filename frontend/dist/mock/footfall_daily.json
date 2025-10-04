@@ -1,0 +1,11 @@
+{
+  "store_id": "store_7821e931",
+  "series": [
+    {"date": "2025-09-28", "footfall": 36},
+    {"date": "2025-09-29", "footfall": 39},
+    {"date": "2025-09-30", "footfall": 41},
+    {"date": "2025-10-01", "footfall": 44},
+    {"date": "2025-10-02", "footfall": 58},
+    {"date": "2025-10-03", "footfall": 47}
+  ]
+}

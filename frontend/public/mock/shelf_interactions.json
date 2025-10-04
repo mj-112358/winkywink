@@ -1,0 +1,8 @@
+{
+  "as_of": "2025-10-03T10:00:00Z",
+  "shelves": [
+    {"name": "Books", "interactions": 7},
+    {"name": "Gifts", "interactions": 22},
+    {"name": "Board Games", "interactions": 10}
+  ]
+}

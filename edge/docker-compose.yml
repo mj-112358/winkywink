@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  edge-runtime:
+    build: .
+    container_name: wink-edge
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./models:/app/models
+    environment:
+      - TZ=America/New_York
+    # For USB camera access, add:
+    # devices:
+    #   - /dev/video0:/dev/video0
+    network_mode: host
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
